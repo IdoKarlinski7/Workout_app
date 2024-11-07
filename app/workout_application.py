@@ -1,7 +1,8 @@
 from datetime import datetime
 from utils.common import get_logger
+from db_handling.user_handler import add_user, validate_user_creds
 from flask import Flask, render_template, request, redirect, url_for, jsonify
-
+from db_handling.data_handler import get_latest_program_id, get_workouts_dict_from_program_id
 
 app = Flask(__name__, template_folder='templates')
 logger = get_logger()
@@ -15,27 +16,47 @@ def home():
 def is_alive():
     return 'alive', 200
 
+
 @app.route('/login', methods=['POST'])
 def login():
-    return redirect(url_for('program_view'))
+    user_email = request.form.get('email')
+    username = request.form.get('username')
+    user_password = request.form.get('password')
+    user_id = validate_user_creds(username, user_email, user_password)
+    # try:
+    #     pass
+    # except ValueError as e:
+    #     status = 400
+    #     resp = jsonify({'status': 'failed',
+    #                     'error_msg': f'User name {username} and email {user_email} does not exist'})
+    #     return
+
+    return redirect(url_for(f'program_view', user_id=user_id))
 
 
 @app.route('/sign_up', methods=['POST'])
 def sign_up():
+    user_email = request.form.get('email')
+    username = request.form.get('username')
+    user_password = request.form.get('password')
+    user_password = '1234'
+    user_id = add_user(username, user_email, user_password)
+    # try:
+    #     pass
+    # except ValueError as e:
+    #     status = 400
+    #     resp = jsonify({'status': 'failed',
+    #                     'error_msg': f'Unable to add user {username} with email {user_email} to user data base'})
+    #     return
+
     return redirect(url_for('program_view'))
 
 
-@app.route('/program_view')
-def program_view():
-    global job_type_to_queue_map
-    waiting_recordings = job_type_to_queue_map['mp4']['waiting'].recordings
-
-    # Get the keys from the first dictionary to use as table headers
-    keys = WAITING_QUEUE_VALUES
-    metadata_keys = METADATA_FIELD_NAMES
-    indexed_entries = generate_indexes(waiting_recordings)
-    return render_template('mp4_waiting_queue.html', metadata_keys=metadata_keys, keys=keys, entries=indexed_entries)
-#
+@app.route('/program_view/<user_id>')
+def program_view(user_id: str):
+    program_id = get_latest_program_id(user_id)
+    workouts = get_workouts_dict_from_program_id(program_id)
+    return render_template('program_view.html', workouts=workouts)
 #
 # @app.route('/programs_history')
 # def magna_waiting_queue():

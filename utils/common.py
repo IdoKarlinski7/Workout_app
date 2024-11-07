@@ -80,3 +80,8 @@ def datetime_to_string(datetime_date:datetime) -> str:
     if not isinstance(datetime_date, datetime):
         raise ValueError('Can not convert non datetime to string.')
     return datetime_date.strftime(DATETIME_STR_FORMAT)
+
+def datetime_now() -> str:
+    now = datetime.now()
+    now = datetime.now()
+    return now.strftime(DATETIME_STR_FORMAT)

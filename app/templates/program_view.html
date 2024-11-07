@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Program View</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: center;
+            width: 50px; /* Make columns narrower */
+            height: 40px; /* Increase row height */
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .workout-title {
+            font-size: 1.5em;
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="workout-container">
+        {% for workout_name, exercises in workouts.items() %}
+            <h2 class="workout-title">{{ workout_name }}</h2>
+            <table>
+                <tr>
+                    <th>Exercise</th>
+                    <th>Weight</th>
+                    <th>Max Reps</th>
+                    <th>Min Reps</th>
+                    <th>Set Type</th>
+                    <th>Rest Period</th>
+                    {% for _ in range(exercises[0].sets | length) %}
+                        <th>Total Reps</th>
+                        <th>RIR</th>
+                    {% endfor %}
+                </tr>
+                {% for exercise in exercises %}
+                    <tr>
+                        <td>{{ exercise.name }}</td>
+                        <td>{{ exercise.weight }}</td>
+                        <td>{{ exercise.max_reps }}</td>
+                        <td>{{ exercise.min_reps }}</td>
+                        <td>{{ exercise.set_type }}</td>
+                        <td>{{ exercise.rest_period }}</td>
+                        {% for set in exercise.sets %}
+                            <td>{{ set.rep_count }}</td>
+                            <td>{{ set.rir }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        {% endfor %}
+    </div>
+
+</body>
+</html>

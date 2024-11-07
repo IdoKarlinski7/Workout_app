@@ -13,7 +13,7 @@ def add_user(username: str, user_email: str, password: str = '', db_client: pymo
     logger.info(f'Inserting new user with info - \n {user_info}')
 
     resp = db_client.User_data.User.insert_one(user_info)
-    if resp.inserted_count != 1:
+    if not resp.inserted_id:
         logger.error('Failed to insert document')
         raise ValueError('Failed to insert document')
 

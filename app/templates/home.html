@@ -56,6 +56,7 @@
         <h2>Welcome!</h2>
         <input type="text" id="username" placeholder="Username" required>
         <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required> <!-- Changed type to 'password' -->
         <div class="button-container">
             <button id="loginButton" type="button" onclick="submitForm('/login')">Log In</button>
             <button id="signUpButton" type="button" onclick="submitForm('/sign_up')">Sign Up</button>
@@ -66,10 +67,13 @@
         function submitForm(endpoint) {
             const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
+            // Create FormData and append username, email, and password
             const formData = new FormData();
             formData.append('username', username);
             formData.append('email', email);
+            formData.append('password', password);
 
             fetch(endpoint, {
                 method: 'POST',
@@ -77,17 +81,14 @@
             })
             .then(response => {
                 if (response.ok) {
-                    // Handle successful response (optional)
                     return response.json();
                 } else {
                     throw new Error('Network response was not ok.');
                 }
             })
             .then(data => {
-                // Redirect or process data as needed
-                console.log(data);  // Example: Log response data
+                console.log(data);
                 if (endpoint === '/login') {
-                    // Redirect to program view or handle login success
                     window.location.href = '/program_view';
                 }
             })
