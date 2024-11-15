@@ -1,18 +1,24 @@
-from enum import IntEnum
-from utils import common
-from bson import ObjectId
+from entities.Set import Set
+from datetime import datetime
+from utils.constants import SetType
 from entities.db_object import DbObject
 
 
 class Exercise(DbObject):
 
-    def __init__(self, name: str, set_type: IntEnum, workout_id: str, last_edited: str, weight: float,
-                 order: int, set_count: int, rest_period: float, min_reps: int, max_reps: int,
-                 linked_exercise_id: ObjectId = None, _id: ObjectId = None):
+    UPDATABLE_FIELDS = ['set_count', 'weight', 'last_edited']
+    INIT_MUST_HAVE_FIELDS = ['name', 'set_type', 'workout_id', 'last_edited', 'weight', 'order', 'set_count',
+                             'rest_period', 'min_reps', 'max_reps']
 
-        super().__init__()
-        self._id = _id
+    def __init__(self, name: str = None, set_type: SetType = None, workout_id: str = None, last_edited: datetime = None,
+                 weight: float = None, order: int = None, set_count: int = None, rest_period: float = None,
+                 date_created: datetime = None, min_reps: int = None, max_reps: int = None, sets: [Set] = None, _id = None):
+
+        updatable = Exercise.verify_init(locals())
+
+        super().__init__(_id, date_created, last_edited, updatable)
         self.name = name
+        self.sets = sets
         self.order = order
         self.weight = weight
         self.max_reps = max_reps
@@ -21,5 +27,4 @@ class Exercise(DbObject):
         self.workout_id = workout_id
         self.set_type = set_type.name
         self.rest_period = rest_period
-        self.linked_exercise_id = linked_exercise_id
-        self.last_edited = common.string_to_datetime(last_edited)
+        self.last_edited = last_edited

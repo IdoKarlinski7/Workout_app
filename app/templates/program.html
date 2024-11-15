@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ido's Training Program</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='program_style.css') }}">
+</head>
+<body>
+
+    <h1 class="workout-title">Ido's Training Program</h1>
+
+    <div id="workout-container">
+        {% for workout_name, exercises in workouts.items() %}
+            <h2 class="workout-title">{{ workout_name }}</h2>
+            <form id="workout-form-{{ workout_name }}" method="POST" action="/submit_workout">
+                <table>
+                    <tr>
+                        <th>Exercise</th>
+                        <th>Set Type</th>
+                        <th>Rep Range</th>
+                        <th>Weight</th>
+                        <th>Rest (Min)</th>
+                        {% for i in range(5) %}
+                            <th>Reps Performed</th>
+                        {% endfor %}
+                    </tr>
+                    {% for exercise in exercises %}
+                        <tr>
+                            <td>{{ exercise.name }}</td>
+                            <td>{{ exercise.set_type }}</td>
+                            <td>{{ exercise.min_reps }} - {{ exercise.max_reps }}</td>
+                            <td>{{ exercise.weight }}</td>
+                            <td>{{ exercise.rest_period }}</td>
+
+                            {% for set in exercise.sets %}
+                                <td class="reps-performed-cell" data-tooltip="Target: {{ set.target }} reps">
+                                    <select name="total_reps_{{ exercise.name }}_set_{{ loop.index }}" data-set-id="{{ set._id }}" data-exercise-id="{{ exercise._id }}">
+                                        <option value="">--</option>
+                                        {% for rep in range(1, exercise.max_reps + 1) %}
+                                            <option value="{{ rep }}" {% if set.rep_count == rep %}selected{% endif %}>{{ rep }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            {% endfor %}
+
+                            {% for _ in range(5 - exercise.sets | length) %}
+                                <td></td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </table>
+                <div class="button-container">
+                    <button type="button" class="submit-button" onclick="submitWorkoutForm('{{ workout_name }}')">Submit</button>
+                </div>
+                <div id="error-message-{{ workout_name }}" class="error-message" style="display: none;">
+                    Please complete all sets before submitting the workout.
+                </div>
+            </form>
+        {% endfor %}
+    </div>
+
+    <script>
+        function submitWorkoutForm(workoutName) {
+            const form = document.getElementById('workout-form-' + workoutName);
+            const selects = form.querySelectorAll('select');
+            const formData = {}; // Initialize as an empty object
+            let incomplete = false;
+
+            // Loop through all select elements to gather data
+            selects.forEach(select => {
+                const setId = select.getAttribute('data-set-id'); // Get the set ID
+                const exerciseId = select.getAttribute('data-exercise-id'); // Get the exercise ID
+                const repCount = select.value;
+
+                if (repCount === "") {
+                    incomplete = true;
+                }
+
+                if (exerciseId && setId && repCount) {
+                    if (!formData[exerciseId]) {
+                        formData[exerciseId] = []; // Initialize list for the exercise if it doesn't exist
+                    }
+                    formData[exerciseId].push({ _id: setId, rep_count: repCount }); // Add set details to the exercise
+                }
+            });
+
+            // Show error message if any select is still "--"
+            if (incomplete) {
+                document.getElementById('error-message-' + workoutName).style.display = 'block';
+            } else {
+                document.getElementById('error-message-' + workoutName).style.display = 'none';
+                // Send the data to the server
+                fetch('/submit_workout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ workoutName: workoutName, formData: formData })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Display confirmation message on successful submission
+                        alert('Workout submitted successfully!');
+                    } else {
+                        alert('Submission failed. Please try again.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+        }
+    </script>
+
+</body>
+</html>
