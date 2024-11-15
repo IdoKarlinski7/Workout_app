@@ -76,8 +76,7 @@ def create_program(user_id: str, name: str, total_workouts: int, db_client: pymo
 
     db_client = get_db_client(db_client)
 
-    _program = Program(user_id=user_id, name=name, total_workouts=total_workouts,
-                          date_created=datetime_now(), last_edited=datetime_now())
+    _program = Program(user_id=user_id, name=name, total_workouts=total_workouts, date_created=datetime_now())
 
     [program_id] = insert_data([_program], 'Program', db_client)
     return str(program_id)
@@ -87,7 +86,7 @@ def create_workout(name: str, order: int, program_id: str, scheduled_day: str, d
 
     db_client = get_db_client(db_client)
 
-    _workout = Workout(name=name, order=order, program_id=program_id,date_created=datetime_now(), last_edited=datetime_now())
+    _workout = Workout(name=name, order=order, program_id=program_id,date_created=datetime_now(), scheduled_day=scheduled_day)
 
     [workout_id] = insert_data([_workout], 'Workout', db_client)
     return str(workout_id)
@@ -99,8 +98,7 @@ def create_exercise(workout_id: str, name: str, order: int, weight: float, max_r
     db_client = get_db_client(db_client)
 
     _exercise = Exercise(name=name, workout_id=workout_id, order=order, weight=weight, max_reps=max_reps,
-                         min_reps=min_reps, set_type=set_type, set_count=set_count, rest_period=rest_period,
-                         last_edited=datetime_now())
+                         min_reps=min_reps, set_type=set_type, set_count=set_count, rest_period=rest_period)
 
     [exercise_id] = insert_data([_exercise], 'Exercise', db_client)
     create_sets(set_count=set_count, exercise_id=exercise_id, target=min_reps)
@@ -113,19 +111,23 @@ def create_sets(set_count: int, exercise_id: str, target: int, db_client: pymong
 
     sets = []
     for order in range(1, set_count + 1):
-        sets.append(Set(order=order, exercise_id=exercise_id, last_edited=datetime_now(), target=target))
+        sets.append(Set(order=order, exercise_id=exercise_id, target=target))
     set_ids = insert_data(sets, 'Set', db_client)
+
     return [str(_id) for _id in set_ids]
 
 
 def add_sets_to_exercise(exercise: Exercise, amount_to_add: int, db_client: pymongo.MongoClient):
+
     sets_start_idx = exercise.set_count + 1
-    sets_end_idx = sets_start_idx + amount_to_add + 1
+    sets_end_idx = sets_start_idx + amount_to_add
     sets = []
+
     for order in range(sets_start_idx, sets_end_idx):
-        sets.append(Set(order=order, exercise_id=str(exercise.get_id()),
-                        last_edited=datetime_now(), target=exercise.min_reps))
+        sets.append(Set(order=order, exercise_id=str(exercise.get_id()), target=exercise.min_reps))
+
     set_ids = insert_data(sets, 'Set', db_client)
+
     return [str(_id) for _id in set_ids]
 
 
@@ -252,7 +254,7 @@ def get_exercises_list_from_workout_ids(workout_ids: [str], db_client: pymongo.M
                     "$expr": { "$eq": ["$exercise_id_str", "$$exercise_id"] }
                 }},
                 { "$sort": { "date_created": -1 } },
-                { "$limit": "$$set_count" }
+                { "$limit": "$$result_limit" }
         ],
         "as": "sets"
         }},
@@ -262,13 +264,14 @@ def get_exercises_list_from_workout_ids(workout_ids: [str], db_client: pymongo.M
         {"$sort": {
             "date_created": -1
         }}
-    ] # TODO - add limit to sets and sort by date
+    ]
 
     result = list(db_client.Data.Exercise.aggregate(_pipeline))
 
     current_exercises = get_current_exercises_from_exercise_list(result)
 
     return [Exercise(**doc) for doc in current_exercises]
+
 
 def get_current_exercises_from_exercise_list(exercise_list: [dict]) -> [dict]:
 

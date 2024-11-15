@@ -1,0 +1,45 @@
+/* General styling */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 2em;
+    color: #ff6666;
+    margin-bottom: 20px;
+}
+
+/* Container styling */
+.program-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    max-width: 800px;
+}
+
+/* Individual program box styling */
+.program-box {
+    background-color: #3a3a3a;
+    color: #f0f0f0;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-align: center;
+    min-width: 150px;
+}
+
+/* Hover effect */
+.program-box:hover {
+    background-color: #ff6666;
+}

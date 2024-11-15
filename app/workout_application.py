@@ -1,8 +1,7 @@
-from datetime import datetime
 from db_handling import db_api
 from utils.common import get_logger
 from db_handling.user_handler import add_user, validate_user_creds
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, abort
 
 app = Flask(__name__, template_folder='templates')
 logger = get_logger()
@@ -19,20 +18,31 @@ def is_alive():
 
 @app.route('/login', methods=['POST'])
 def login():
+
     user_email = request.form.get('email')
     username = request.form.get('username')
     user_password = request.form.get('password')
-    user_id = validate_user_creds(username, user_email, user_password)
+
+    try:
+        user_id = validate_user_creds(username, user_email, user_password)
+
+    except Exception:
+        abort(401)
 
     return redirect(url_for(f'programs_view', user_id=user_id))
 
 
 @app.route('/sign_up', methods=['POST'])
 def sign_up():
+
     user_email = request.form.get('email')
     username = request.form.get('username')
     user_password = request.form.get('password')
-    user_id = add_user(username, user_email, user_password)
+
+    try:
+        user_id = add_user(username, user_email, user_password)
+    except Exception:
+        abort(401)
 
     return redirect(url_for(f'programs_view', user_id=user_id))
 
@@ -40,43 +50,35 @@ def sign_up():
 @app.route('/programs_view/<user_id>')
 def programs_view(user_id: str):
     programs = db_api.get_programs_from_user_id(user_id)
-    return render_template('programs_view.html', programs=programs)
+    return render_template('programs_view.html', programs=programs, user_id=user_id)
 
+
+@app.route('/create_program', methods=['POST'])
+def create_program():
+    user_id = request.form.get('user_id')
+    return render_template('create_program.html', user_id=user_id)
+
+
+@app.route('/create_workouts', methods=['POST'])
+def create_workouts():
+    user_id = request.form.get('user_id')
+    program_name = request.form.get('name')
+    workouts_amount = int(request.form.get('workouts_amount'))
+    program_id = db_api.create_program(program_name=program_name, workouts_per_week=workouts_amount, user_id=user_id)
+
+    return render_template('create_workouts.html', program_id=program_id, workouts_amount=workouts_amount)
 
 
 @app.route('/get_program/<program_id>', methods=['GET'])
 def get_program(program_id: str):
     workouts = db_api.get_workouts_dict_from_program_id(program_id)
     return render_template('program.html', workouts=workouts)
-#
-# @app.route('/programs_history')
-# def magna_waiting_queue():
-#     global job_type_to_queue_map
-#     waiting_recordings = job_type_to_queue_map['magna']['waiting'].recordings
-#
-#     # Get the keys from the first dictionary to use as table headers
-#     keys = WAITING_QUEUE_VALUES
-#     metadata_keys = METADATA_FIELD_NAMES
-#     indexed_entries = generate_indexes(waiting_recordings)
-#     return render_template('magna_waiting_queue.html', metadata_keys=metadata_keys, keys=keys, entries=indexed_entries)
-#
-#
-# @app.route('/set_target_for_exercise', method=['POST'])
-# def mp4_in_process_queue():
-#     global job_type_to_queue_map
-#     in_process_recordings = get_sorted_recordings_by_status(STATUS.IN_PROGRESS, 'mp4', 50)
-#
-#     # Get the keys from the first dictionary to use as table headers
-#     keys = WAITING_QUEUE_VALUES
-#     metadata_keys = METADATA_FIELD_NAMES
-#     indexed_entries = generate_indexes(in_process_recordings)
-#     return render_template('mp4_in_process_queue.html', metadata_keys=metadata_keys, keys=keys, entries=indexed_entries)
-#
-#
+
+
 @app.route('/submit_workout', methods=['POST'])
 def submit_workout():
     exercise_to_sets_map = request.json.get('formData')
-    print(exercise_to_sets_map)
+
     if exercise_to_sets_map is None:
         msg, status = 'Unable to fetch data', 400
     else:
@@ -85,6 +87,10 @@ def submit_workout():
     db_api.submit_workout(exercise_to_sets_map)
 
     return msg, status
+
+@app.errorhandler(401)
+def unauthorized_error(error):
+ return render_template('unauthorized.html'), 401
 
 if __name__ == '__main__':
     app.run(debug=True)

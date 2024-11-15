@@ -14,9 +14,8 @@ class DbObject:
     UPDATABLE_FIELDS = []
     INIT_MUST_HAVE_FIELDS = []
 
-    def __init__(self, _id: Union[ObjectId, str], date_created: datetime, last_edited: datetime, updatable: bool):
+    def __init__(self, _id: Union[ObjectId, str], date_created: datetime, updatable: bool):
         self.updatable = updatable
-        self.last_edited = last_edited
         self.date_created = date_created
         self._id = (_id if isinstance(_id, ObjectId) else ObjectId(_id)) if _id else None
 
