@@ -83,13 +83,16 @@ class DbObject:
 
     @classmethod
     def verify_init(cls, init_values: dict) -> bool:
+
         updatable = False
-        if not cls.verify_init_values_for_update(locals()):
-            raise ValueError(f'Unable to init object for update without any {cls.UPDATABLE_FIELDS}')
+
+        if not cls.verify_init_values_for_update(init_values):
+            if cls.UPDATABLE_FIELDS:
+                raise ValueError(f'Unable to init object for update without any {cls.UPDATABLE_FIELDS}')
         else:
             updatable = True
 
-        if not cls.verify_init_values(locals()):
+        if not cls.verify_init_values(init_values):
             raise ValueError(f'Unable to init object without all {cls.INIT_MUST_HAVE_FIELDS}')
 
         return updatable

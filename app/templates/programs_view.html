@@ -94,8 +94,12 @@
             </div>
         {% endfor %}
     </div>
-    <!-- Add program button -->
-    <button class="add-program-button" onclick="window.location.href='/create_program/{{ user_id }}'">+</button>
+
+    <!-- Form for adding a program -->
+    <form action="/create_program" method="POST" id="create-program-form">
+        <input type="hidden" name="user_id" value="{{ user_id }}">
+        <button type="submit" class="add-program-button">+</button>
+    </form>
 
 </body>
 </html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Workouts</title>
+    <style>
+        /* General styling */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            background-color: #2a2a2a;
+            color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2em;
+            color: #ff6666;
+            margin-bottom: 20px;
+        }
+
+        /* Styling for the table */
+        table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+            background-color: #3a3a3a;
+            color: #f0f0f0;
+            border-radius: 8px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ff6666;
+        }
+
+        th {
+            background-color: #ff6666;
+        }
+
+        /* Button to move to the next table */
+        .next-table-button {
+            background-color: #ff6666;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        .next-table-button:hover {
+            background-color: #ff4d4d;
+        }
+
+        .table-container {
+            display: none;
+        }
+
+        .table-container.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Create Workouts for Program: {{ program_id }}</h1>
+
+    <div id="tables-container">
+        {% for i in range(1, workouts_amount + 1) %}
+            <div class="table-container" id="table-{{ i }}">
+                <h2>Workout {{ i }}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Exercise</th>
+                            <th>Sets</th>
+                            <th>Reps</th>
+                            <th>Weight</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" name="exercise_{{ i }}" placeholder="Enter exercise name" required></td>
+                            <td><input type="number" name="sets_{{ i }}" placeholder="Sets" required></td>
+                            <td><input type="number" name="reps_{{ i }}" placeholder="Reps" required></td>
+                            <td><input type="number" name="weight_{{ i }}" placeholder="Weight" required></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="next-table-button" onclick="showNextTable({{ i }})">Next Workout</button>
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        let currentTable = 1;
+
+        function showNextTable(tableNumber) {
+            // Hide current table
+            document.getElementById('table-' + currentTable).classList.remove('active');
+            // Show next table
+            currentTable++;
+            if (currentTable <= {{ workouts_amount }}) {
+                document.getElementById('table-' + currentTable).classList.add('active');
+            }
+        }
+
+        // Show the first table initially
+        document.getElementById('table-1').classList.add('active');
+    </script>
+</body>
+</html>
