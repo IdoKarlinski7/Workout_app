@@ -6,7 +6,7 @@ from logging import Logger
 from datetime import datetime
 
 from utils.common import datetime_now
-from utils.constants import OBJECT_ID_FIELDS
+from utils.constants import OBJECT_ID_FIELDS, DATETIME_STR_FORMAT
 
 
 class DbObject:
@@ -74,6 +74,11 @@ class DbObject:
 
 
     @classmethod
+    def format_date_performed(cls, date_performed: Union[str, datetime]):
+        return date_performed, DATETIME_STR_FORMAT if isinstance(date_performed, str) else datetime.strftime(date_performed, DATETIME_STR_FORMAT)
+
+
+    @classmethod
     def verify_init_values_for_update(cls, init_values: dict) -> bool:
         return init_values.get('_id', False) and any([init_values.get(field) is not None for field in cls.UPDATABLE_FIELDS])
 
@@ -92,7 +97,7 @@ class DbObject:
         else:
             updatable = True
 
-        if not cls.verify_init_values(init_values):
+        if not cls.verify_init_values(init_values) and not updatable:
             raise ValueError(f'Unable to init object without all {cls.INIT_MUST_HAVE_FIELDS}')
 
         return updatable

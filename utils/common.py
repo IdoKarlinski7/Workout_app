@@ -1,6 +1,7 @@
 import os
 import logging
 from hashlib import md5
+from typing import Union
 from datetime import datetime
 from utils.constants import DATETIME_STR_FORMAT, DAY_NAME_FORMAT
 
@@ -80,13 +81,9 @@ def datetime_to_string(datetime_date:datetime) -> str:
         raise ValueError('Can not convert non datetime to string.')
     return datetime_date.strftime(DATETIME_STR_FORMAT)
 
-def datetime_now() -> datetime:
-    return datetime.now()
+def datetime_now(as_string: bool = False) -> Union[datetime, str]:
+    return datetime.now() if not as_string else datetime.now().strftime(DATETIME_STR_FORMAT)
 
 def get_day_name() -> str:
     now = datetime_now()
     return now.strftime(DAY_NAME_FORMAT)
-
-def datetime_now_as_string() -> str:
-    now = datetime.now()
-    return now.strftime(DATETIME_STR_FORMAT)

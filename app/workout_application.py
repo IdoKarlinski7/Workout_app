@@ -1,5 +1,6 @@
 from db_handling import db_api
 from utils.common import get_logger
+from utils.constants import SetType
 from db_handling.user_handler import add_user, validate_user_creds
 from flask import Flask, render_template, request, redirect, url_for, abort
 
@@ -67,6 +68,7 @@ def create_workouts():
     user_id = request.form.get('user_id')
     program_name = request.form.get('program_name')
     workouts_amount = int(request.form.get('workouts_amount'))
+    set_types = [_type.name for _type in SetType]
 
     try:
         program_id = db_api.create_program(program_name=program_name, workouts_per_week=workouts_amount, user_id=user_id)
@@ -74,20 +76,16 @@ def create_workouts():
     except Exception:
         abort(401)
 
-    return render_template('create_workouts.html', program_id=program_id, workouts_amount=workouts_amount)
+    return render_template('create_workouts.html',set_types=set_types, program_id=program_id,
+                           workouts_amount=workouts_amount, program_name=program_name)
 
 
 @app.route('/add_exercises_to_workouts', methods=['POST'])
-def create_workouts():
+def add_exercises_to_workouts():
     program_id = request.form.get('program_id')
-    program_id = request.form.get('workouts_amount')
+    workouts_amount = request.form.get('workouts_amount')
 
-    try:
-        pass
-    except Exception:
-        abort(401)
-
-    return redirect(url_for(f'get_program', user_id=program_id))
+    return redirect(url_for(f'add_exercises.html', user_id=program_id, workouts_amount=workouts_amount))
 
 
 @app.route('/get_program/<program_id>', methods=['GET'])

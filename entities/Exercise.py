@@ -6,13 +6,15 @@ from entities.db_object import DbObject
 
 class Exercise(DbObject):
 
-    UPDATABLE_FIELDS = ['set_count', 'weight']
+    UPDATABLE_FIELDS = ['set_count', 'weight', 'min_reps', 'max_reps','set_type', 'rest_period', 'dates_performed']
+
     INIT_MUST_HAVE_FIELDS = ['name', 'set_type', 'workout_id', 'weight', 'order', 'set_count',
                              'rest_period', 'min_reps', 'max_reps']
 
-    def __init__(self, name: str = None, set_type: SetType = None, workout_id: str = None,
-                 weight: float = None, order: int = None, set_count: int = None, rest_period: float = None,
-                 date_created: datetime = None, min_reps: int = None, max_reps: int = None, sets: [Set] = None, _id = None):
+    def __init__(self, name: str = None, set_type: SetType = SetType.REGULAR, workout_id: str = None,
+                 date_performed: str = None, weight: float = None, order: int = None, set_count: int = None,
+                 rest_period: float = None, date_created: datetime = None, min_reps: int = None, max_reps: int = None,
+                 sets: [Set] = None, _id = None):
 
         updatable = Exercise.verify_init(locals())
 
@@ -26,4 +28,4 @@ class Exercise(DbObject):
         self.set_count = set_count
         self.workout_id = workout_id
         self.set_type = set_type.name
-
+        self.date_performed = date_performed

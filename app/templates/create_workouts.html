@@ -32,6 +32,7 @@
             background-color: #3a3a3a;
             color: #f0f0f0;
             border-radius: 8px;
+            position: relative;
         }
 
         th, td {
@@ -45,12 +46,12 @@
         }
 
         /* Button to move to the next table */
-        .next-table-button {
+        .next-table-button, .prev-table-button {
             background-color: #ff6666;
             color: white;
             border: none;
-            padding: 10px;
-            font-size: 1em;
+            padding: 8px 15px;
+            font-size: 0.9em;
             font-weight: bold;
             border-radius: 5px;
             cursor: pointer;
@@ -58,7 +59,7 @@
             transition: background-color 0.3s ease;
         }
 
-        .next-table-button:hover {
+        .next-table-button:hover, .prev-table-button:hover {
             background-color: #ff4d4d;
         }
 
@@ -69,37 +70,93 @@
         .table-container.active {
             display: block;
         }
+
+        /* Styling for the plus button (Add Row) positioned at the bottom right of the table */
+        .add-row-button {
+            background-color: #ff6666;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50%;
+            cursor: pointer;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        .add-row-button:hover {
+            background-color: #ff4d4d;
+        }
+
+        /* Styling for the submit button */
+        .submit-button {
+            background-color: #ff6666;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .submit-button:hover {
+            background-color: #ff4d4d;
+        }
     </style>
 </head>
 <body>
-    <h1>Create Workouts for Program: {{ program_id }}</h1>
+    <h1>Create Workouts for Program: {{ program_name }}</h1>
 
     <div id="tables-container">
         {% for i in range(1, workouts_amount + 1) %}
             <div class="table-container" id="table-{{ i }}">
                 <h2>Workout {{ i }}</h2>
-                <table>
+                <table id="workout-table-{{ i }}">
                     <thead>
                         <tr>
-                            <th>Exercise</th>
-                            <th>Sets</th>
-                            <th>Reps</th>
+                            <th>Name</th>
                             <th>Weight</th>
+                            <th>Rep Range (Min)</th>
+                            <th>Rep Range (Max)</th>
+                            <th>Rest Period (minutes)</th>
+                            <th>Set Type</th> <!-- New column for Set Type -->
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td><input type="text" name="exercise_{{ i }}" placeholder="Enter exercise name" required></td>
-                            <td><input type="number" name="sets_{{ i }}" placeholder="Sets" required></td>
-                            <td><input type="number" name="reps_{{ i }}" placeholder="Reps" required></td>
-                            <td><input type="number" name="weight_{{ i }}" placeholder="Weight" required></td>
+                            <td><input type="text" name="name_{{ i }}[]" placeholder="Enter exercise name" required></td>
+                            <td><input type="number" name="weight_{{ i }}[]" placeholder="Weight" required></td>
+                            <td><input type="number" name="min_reps_{{ i }}[]" placeholder="Min Reps" required max="20"></td> <!-- Max 20 for Min Reps -->
+                            <td><input type="number" name="max_reps_{{ i }}[]" placeholder="Max Reps" required max="20"></td> <!-- Max 20 for Max Reps -->
+                            <td><input type="number" name="rest_period_{{ i }}[]" placeholder="Rest Period" required></td>
+                            <td>
+                                <select name="set_type_{{ i }}[]" required>
+                                    {% for set_type in set_types %}
+                                        <option value="{{ set_type }}">{{ set_type }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td> <!-- Dropdown menu for Set Type -->
                         </tr>
                     </tbody>
                 </table>
+                <!-- Navigation buttons -->
+                <button class="prev-table-button" onclick="showPrevTable({{ i }})">Previous Workout</button>
                 <button class="next-table-button" onclick="showNextTable({{ i }})">Next Workout</button>
+                <!-- Add row button positioned at the bottom right of the table -->
+                <button class="add-row-button" onclick="addRow({{ i }})">+</button>
             </div>
         {% endfor %}
     </div>
+
+    <!-- Submit Button -->
+    <button class="submit-button" onclick="submitWorkouts()">Submit Workouts</button>
 
     <script>
         let currentTable = 1;
@@ -114,8 +171,59 @@
             }
         }
 
+        function showPrevTable(tableNumber) {
+            // Hide current table
+            document.getElementById('table-' + currentTable).classList.remove('active');
+            // Show previous table
+            currentTable--;
+            if (currentTable >= 1) {
+                document.getElementById('table-' + currentTable).classList.add('active');
+            }
+        }
+
         // Show the first table initially
         document.getElementById('table-1').classList.add('active');
+
+        // Function to add a new row to the table
+        function addRow(workoutNumber) {
+            const table = document.getElementById('workout-table-' + workoutNumber);
+            const tbody = table.querySelector('tbody');
+            const newRow = tbody.rows[0].cloneNode(true); // Clone the first row
+            tbody.appendChild(newRow); // Add the new row to the table
+        }
+
+        // Function to submit the workout data (this can be extended to send the data via a form submission or AJAX)
+        function submitWorkouts() {
+            const formData = new FormData();
+            // Collect data from each table and add it to the form data
+            for (let i = 1; i <= {{ workouts_amount }}; i++) {
+                const table = document.getElementById('workout-table-' + i);
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach((row, rowIndex) => {
+                    formData.append('workout_' + i + '_name[]', row.querySelector('input[name="name_' + i + '[]"]').value);
+                    formData.append('workout_' + i + '_weight[]', row.querySelector('input[name="weight_' + i + '[]"]').value);
+                    formData.append('workout_' + i + '_min_reps[]', row.querySelector('input[name="min_reps_' + i + '[]"]').value);
+                    formData.append('workout_' + i + '_max_reps[]', row.querySelector('input[name="max_reps_' + i + '[]"]').value);
+                    formData.append('workout_' + i + '_rest_period[]', row.querySelector('input[name="rest_period_' + i + '[]"]').value);
+                    formData.append('workout_' + i + '_set_type[]', row.querySelector('select[name="set_type_' + i + '[]"]').value); // Add set_type to formData
+                });
+            }
+
+            // Make an AJAX POST request to submit the form data
+            fetch('/submit_workouts', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Workouts submitted successfully!');
+                // Handle success (you can redirect or do other actions here)
+            })
+            .catch(error => {
+                alert('Error submitting workouts');
+                console.error('Error:', error);
+            });
+        }
     </script>
 </body>
 </html>
