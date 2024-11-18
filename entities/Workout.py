@@ -6,14 +6,12 @@ class Workout(DbObject):
 
     UPDATABLE_FIELDS = ['dates_performed']
 
-    INIT_MUST_HAVE_FIELDS = ['name', 'program_id', 'order', 'date_created', 'scheduled_day']
+    INSERT_MUST_HAVE_FIELDS = ['name', 'program_id', 'order', 'date_created', 'scheduled_day']
 
     def __init__(self, name: str = None, program_id: str = None, order: int = None, scheduled_day: str = None,
                  date_created: datetime = None, dates_performed: [str] = None, _id = None, exercises: [Exercise] = None):
 
-        updatable = Workout.verify_init(locals())
-
-        super().__init__(_id, date_created, updatable)
+        super().__init__(_id, date_created)
         self.name = name
         self.order = order
         self.exercises = exercises

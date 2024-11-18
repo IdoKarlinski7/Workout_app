@@ -7,7 +7,7 @@ DAY_NAME_FORMAT = "%A"
 DATETIME_STR_FORMAT = "%Y_%m_%d_%H_%M_%S"
 
 
-OBJECT_ID_FIELDS = ['_id', 'user_id', 'program_id', 'workout_id', 'exercise_id', 'linked_exercise_id']
+OBJECT_ID_FIELDS = ['_id', 'user_id', 'program_id', 'workout_id', 'exercise_id']
 
 
 class SetType(IntEnum):

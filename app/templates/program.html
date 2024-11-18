@@ -35,8 +35,8 @@
 
                             {% for set in exercise.sets %}
                                 <td class="reps-performed-cell" data-tooltip="Target: {{ set.target }} reps">
-                                    <select name="total_reps_{{ exercise.name }}_set_{{ loop.index }}" data-set-id="{{ set._id }}" data-exercise-id="{{ exercise._id }}">
-                                        <option value="">--</option>
+                                    <select name="reps_performed_{{ exercise.name }}_set_{{ loop.index }}" data-set-id="{{ set._id }}" data-exercise-id="{{ exercise._id }}">
+                                        <option value="" {% if set.rep_count == -1 %}selected{% endif %}>--</option>
                                         {% for rep in range(1, exercise.max_reps + 1) %}
                                             <option value="{{ rep }}" {% if set.rep_count == rep %}selected{% endif %}>{{ rep }}</option>
                                         {% endfor %}

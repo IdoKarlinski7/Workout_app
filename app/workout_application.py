@@ -91,6 +91,9 @@ def add_exercises_to_workouts():
 @app.route('/get_program/<program_id>', methods=['GET'])
 def get_program(program_id: str):
     workouts = db_api.get_workouts_dict_from_program_id(program_id)
+    for w, exercises in workouts.items():
+        print(w)
+        print(exercises)
     return render_template('program.html', workouts=workouts)
 
 

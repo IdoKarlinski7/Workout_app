@@ -10,6 +10,7 @@ from utils.constants import DayNames
 from entities.Exercise import Exercise
 from entities.db_object import DbObject
 import utils.progression_logic as logic
+import db_handling.db_read_handler as db_read
 from utils.common import get_logger, datetime_now
 from db_handling.db_client_handler import get_db_client
 
@@ -49,7 +50,6 @@ def update_data(collection_name: str, db_client: pymongo.MongoClient,
             LOGGER.error(f'Unable to perform a bulk write operation without a list of Objects')
         else:
             for db_obj in db_objects:
-                db_obj.last_edited = update_time
                 obj_id, values_dict = db_obj.update_dict()
                 update_op = pymongo.UpdateOne({"_id": obj_id}, {"$set": values_dict})
                 bulk_operations.append(update_op)
@@ -62,24 +62,6 @@ def update_data(collection_name: str, db_client: pymongo.MongoClient,
         LOGGER.warning(f'Able to update only {len(modified_count)}/ {len(db_objects)} documents.')
 
     return modified_count
-
-
-def get_data(collection_name: str, db_client: pymongo.MongoClient, session: ClientSession = None,
-             document_ids: [ObjectId] = None, query: dict = None, project: {str: int} = None) -> [dict]:
-
-    project = project if project else {}
-
-    if query is None and document_ids is None:
-        LOGGER.error(f'Unable to get data without a query of a list of IDs.')
-        raise ValueError
-
-    LOGGER.info(f'Getting documents with projection {project} from collection {collection_name}')
-
-    _query = query if query else {'_id': {"$in": document_ids}}
-
-    result = list(db_client['Data'][collection_name].find(_query, project, session=session))
-
-    return result
 
 
 def create_program(user_id: str, name: str, total_workouts: int, db_client: pymongo.MongoClient = None) -> str:
@@ -108,7 +90,8 @@ def create_exercise(workout_id: str, name: str, order: int, weight: float, max_r
     db_client = get_db_client(db_client)
 
     _exercise = Exercise(name=name, workout_id=workout_id, order=order, weight=weight, max_reps=max_reps,
-                         min_reps=min_reps, set_type=set_type, set_count=set_count, rest_period=rest_period)
+                         date_created=datetime_now(), min_reps=min_reps, set_type=set_type, set_count=set_count,
+                         rest_period=rest_period)
 
     [exercise_id] = insert_data([_exercise], 'Exercise', db_client)
     create_sets(set_count=set_count, exercise_id=exercise_id, target=min_reps)
@@ -121,7 +104,7 @@ def create_sets(set_count: int, exercise_id: str, target: int, db_client: pymong
 
     sets = []
     for order in range(1, set_count + 1):
-        sets.append(Set(order=order, exercise_id=exercise_id, target=target))
+        sets.append(Set(order=order, exercise_id=exercise_id, target=target, date_created=datetime_now()))
     set_ids = insert_data(sets, 'Set', db_client)
 
     return [str(_id) for _id in set_ids]
@@ -141,30 +124,10 @@ def add_sets_to_exercise(exercise: Exercise, amount_to_add: int, db_client: pymo
     return [str(_id) for _id in set_ids]
 
 
-def get_exercise_list_from_ids(exercise_ids: [ObjectId], db_client: pymongo.MongoClient, session: ClientSession) -> [Exercise]:
-
-    _project = {'workout_id': 1, 'set_count': 1, 'weight': 1, '_id': 1}
-
-    exercise_docs = get_data(collection_name='Exercise', project=_project, document_ids=exercise_ids,
-                             db_client=db_client, session=session)
-
-    exercise_list = [Exercise(**doc) for doc in exercise_docs]
-
-    if not _verify_single_workout_id_from_exercise_list(exercise_list):
-        raise ValueError('Unable to get a single workout id from exercise list.')
-
-    return exercise_list
-
-
-def _verify_single_workout_id_from_exercise_list(exercise_list: [Exercise]) -> bool:
-    workout_ids = list({obj.workout_id for obj in exercise_list})
-    return len(workout_ids) == 1
-
-
 def submit_workout(exercise_id_to_sets: {ObjectId: Set}, db_client: pymongo.MongoClient, session: ClientSession):
 
     def _get_aligned_exercise_list():
-        _exercise_list = get_exercise_list_from_ids(list(exercise_id_to_sets.keys()), db_client, session)
+        _exercise_list = db_read.get_exercise_list_from_ids(list(exercise_id_to_sets.keys()), db_client, session)
         for ex in _exercise_list:
             ex.sets = exercise_id_to_sets.get(ex.get_id(), [])
         return _exercise_list
@@ -178,10 +141,10 @@ def submit_workout(exercise_id_to_sets: {ObjectId: Set}, db_client: pymongo.Mong
     update_sets_info(exercise_id_to_sets, date_performed, db_client, session)
 
     LOGGER.info(f'Updating Exercises in DB')
-    update_sets_info(exercise_id_to_sets, date_performed, db_client, session)
+    update_exercises_info(exercise_id_to_sets, date_performed, db_client, session)
 
     LOGGER.info(f'Updating Workout in DB')
-    update_workout_info(exercise_id_to_sets, date_performed, db_client, session)
+    update_workout_info(exercise_list, date_performed, db_client, session)
 
     LOGGER.info(f'Generating new Data for next workout in DB')
     generate_next_workout(exercise_list, db_client)
@@ -215,88 +178,16 @@ def update_exercises_info(exercise_id_to_sets: {ObjectId: Set}, date_performed: 
                 document_ids=exercise_ids, update_dict=date_update)
 
 
-def update_workout_info(exercise_id_to_sets: {ObjectId: Set}, date_performed: str,
+def update_workout_info(exercise_list: [Exercise], date_performed: str,
                        db_client: pymongo.MongoClient, session: ClientSession):
+    workout_id = ObjectId(exercise_list[0].workout_id)
+    workout_dict = db_read.get_data('Workout', db_client, document_ids=[workout_id])
 
-    exercise_ids = [_id for _id in exercise_id_to_sets.keys()]
-
-    workout_dict = get_workout_from_exercise_ids(exercise_ids, db_client, session)
-
-    workout = Workout(**workout_dict)
+    workout = Workout(**workout_dict[0])
 
     workout.dates_performed.append(date_performed)
 
     update_data(collection_name='Exercise', db_client=db_client, session=session, db_objects=[workout])
-
-
-def get_workout_from_exercise_ids(exercise_ids: [ObjectId], db_client: pymongo.MongoClient, session: ClientSession) -> dict:
-
-    _pipeline = [
-        {
-            "$match": {
-            "_id": {"$in": exercise_ids}
-        }},
-        {"$addFields": {
-            "workout_obj_id": {"$toObjectId": "workout_id"}
-        }},
-        {
-            "$lookup": {
-            "from": "Workout",
-            "localField": 'workout_obj_id',
-            "foreignField": '_id',
-            "as": "workout"
-        }},
-        {"$project": {
-            "_id": 0,
-            "workout": 1
-        }}
-    ]
-
-    workouts = list(db_client.Data.Exercise.aggregate(_pipeline, session=session))
-
-    workouts = list({doc['workout'] for doc in workouts})
-
-    if len(workouts) > 1:
-        LOGGER.error(f'Got more that one workout ids from list of exercise ids')
-        raise ValueError
-
-    return workouts[0]
-
-
-def get_program_from_workout(workout: Workout, db_client: pymongo.MongoClient, session: ClientSession) -> Program:
-    program_id = ObjectId(workout.program_id)
-    [program_doc] = get_data('Program', db_client=db_client, session=session, document_ids=[program_id])
-    return Program(**program_doc)
-
-
-def get_program_workouts_from_workout_id(workout_id: ObjectId, db_client: pymongo.MongoClient, session: ClientSession) -> [Workout]:
-    _pipeline = [
-    {"$match":
-         {"_id": workout_id}
-    },
-    {"$lookup": {
-            "from": "Workout",
-            "localField": "program_id",
-            "foreignField": "program_id",
-            "as": "all_workouts"}
-    },
-    {"$unwind":
-            "all_workouts"
-     },
-    {"$replaceRoot":
-            {"newRoot": "all_workouts"}
-     },
-    {"$project": {
-            "order": 1,
-            "completed": 1,
-            "name": 1,
-            "program_id": 1,
-            "last_edited": 1,
-            "date_created": 1
-
-    }}
-    ]
-    return [Workout(**doc) for doc in list(db_client.Data.Workout.aggregate(_pipeline, session=session))]
 
 
 def generate_next_workout(exercise_list: [Exercise], db_client: pymongo.MongoClient):
@@ -304,84 +195,18 @@ def generate_next_workout(exercise_list: [Exercise], db_client: pymongo.MongoCli
     LOGGER.info(f'Generating new targets for next workout')
     next_exercises = logic.generate_progression_for_exercise_list(exercise_list)
 
-    new_exercises = []
-    sets_with_same_exercise_id = []
+    next_exercise_ids = insert_data(next_exercises, 'Exercise', db_client)
 
-    for next_ex in next_exercises:
-        # exercise itself was modified
-        if not next_ex.get_id():
-            new_exercises.append(next_ex)
-        # only need to insert new sets
-        else:
-            sets_with_same_exercise_id += next_ex.sets
+    exercise_name_to_id = db_read.get_data('Exercise', db_client, document_ids=[next_exercise_ids], project={'name': 1})
+    exercise_name_to_id = {doc['name']: str(doc['_id']) for doc in exercise_name_to_id}
 
-    if new_exercises:
-        LOGGER.info(f'Insert new Exercises with updated weights')
-        insert_data(new_exercises, 'Exercise', db_client)
-
-    LOGGER.info(f'Insert new Sets with updated targets and empty rep count')
-    insert_data(sets_with_same_exercise_id, 'Set', db_client)
-
-
-def get_exercises_list_from_workout_ids(workout_ids: [str], db_client: pymongo.MongoClient) -> [Exercise]:
-    _pipeline = [
-        {
-            "$match": {
-            "workout_id": {"$in": workout_ids}
-        }},
-        {"$addFields": {
-            "exercise_id_str": {"$toString": "$_id"}
-        }},
-        {
-            "$lookup": {
-            "from": "Set",
-            "let": { "exercise_id": "$exercise_id_str", "result_limit": "$set_count" },
-            "pipeline": [
-                { "$match": {
-                    "$expr": { "$eq": ["$exercise_id_str", "$$exercise_id"] }
-                }},
-                { "$sort": { "date_created": -1 } },
-                { "$limit": "$$result_limit" }
-        ],
-        "as": "sets"
-        }},
-        {"$project": {
-            "exercise_id_str": 0
-        }},
-        {"$sort": {
-            "date_created": -1
-        }}
-    ]
-
-    result = list(db_client.Data.Exercise.aggregate(_pipeline))
-
-    current_exercises = get_current_exercises_from_exercise_list(result)
-
-    return [Exercise(**doc) for doc in current_exercises]
-
-
-def get_current_exercises_from_exercise_list(exercise_list: [dict]) -> [dict]:
-
-    current_exercises = [exercise_list[0]]
-
+    next_sets = []
     for ex in exercise_list:
-        if ex['name'] == current_exercises[-1]['name']:
-            pass
-        else:
-            current_exercises.append(ex)
+        for _set in ex.sets:
+            _set.exercise_id = exercise_name_to_id[ex.name]
+        next_sets += ex.sets
 
-    return current_exercises
-
-
-def get_workout_id_to_name_map(db_client: pymongo.MongoClient, workout_ids: [str] = None,
-                                program_id: str = None) -> dict:
-
-    _query = {'_id': {"$in": [ObjectId(_id) for _id in workout_ids]}} if workout_ids else {'program_id': program_id}
-    _project = {"_id": 1, "name": 1, "order": 1}
-
-    workouts_res = get_data('Workout', db_client, query=_query, project=_project)
-
-    return {str(w["_id"]): w['name'] for w in workouts_res}
+    next_set_ids = insert_data(next_sets, 'Set', db_client)
 
 
 def create_workouts_dict(workout_id_to_name: dict, exercises: [Exercise]) -> dict:
@@ -396,54 +221,9 @@ def create_workouts_dict(workout_id_to_name: dict, exercises: [Exercise]) -> dic
     return workouts_dict
 
 
-def get_workouts_dict_from_list_of_ids(workout_ids: [str], db_client: pymongo.MongoClient) -> dict:
-    db_client = get_db_client(db_client)
-
-    id_to_name_map = get_workout_id_to_name_map(workout_ids=workout_ids, db_client=db_client)
-
-    exercises_list = get_exercises_list_from_workout_ids(workout_ids=workout_ids, db_client=db_client)
-
-    return create_workouts_dict(workout_id_to_name=id_to_name_map, exercises=exercises_list)
-
-
-# def make_aggregation_query(db_client: pymongo.MongoClient, collection_name: str, match: {str:str}, session: ClientSession = None,
-#                            add_fields: {str: str} = None, lookup: {str: str} = None, unwind: {str: str} = None,
-#                            replace_root: {str: str} = None, project: {str: str} = None, sort: {str: str} = None) -> [dict]:
-#
-#     aggregation_pipeline = [{"$match": match}]
-#
-#     if add_fields is not None:
-#         aggregation_pipeline.append({"$addFields": add_fields})
-#
-#     if add_fields is not None:
-#         aggregation_pipeline.append({"$addFields": add_fields})
-#
-#     if lookup is not None:
-#         aggregation_pipeline.append({"$lookup": lookup})
-#
-#     if unwind is not None:
-#         aggregation_pipeline.append({"$unwind": unwind})
-#
-#     if replace_root is not None:
-#         aggregation_pipeline.append({"$replaceRoot": replace_root})
-#
-#     if add_fields is not None:
-#         aggregation_pipeline.append({"$addFields": add_fields})
-#
-#     if project is not None:
-#         aggregation_pipeline.append({"$project": project})
-#
-#     if sort is not None:
-#         aggregation_pipeline.append({"$sort": sort})
-#
-#     return list(db_client['Data'][collection_name].aggregate(pipeline=aggregation_pipeline, session=session))
-
-
-
-
 if __name__ == "__main__":
     mongo_client = get_db_client()
-    prog_id = create_program('672b814418822137da5fae4b', 'AB', 4)
+    prog_id = create_program('672b814418822137da5fae4b', 'ExampleProgram', 4)
 
     workout_id_a1 = create_workout('A1', 1, prog_id, DayNames.Sunday.name)
     create_exercise(workout_id_a1, 'Weighted Pull Ups', 1, 5, 12, 8, 2, 2)

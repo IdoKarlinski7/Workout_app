@@ -8,7 +8,7 @@ WEIGHT_RAISE_UNIT = 2.5
 LOW_WEIGHT_THRESHOLD = 0.1
 HIGH_WEIGHT_THRESHOLD = 0.04
 
-def generate_sets_progression(sets: [Set], min_reps: int, max_reps: int) -> [Set]:
+def generate_sets_progression(sets: [Set], min_reps: int, max_reps: int) -> [bool, [Set]]:
 
     next_sets = []
     add_weight = False
@@ -20,7 +20,7 @@ def generate_sets_progression(sets: [Set], min_reps: int, max_reps: int) -> [Set
 
         # Preformed reps up to the minimum required
         if _set.rep_count <= min_reps or set_next_to_min:
-            new_set.target = max(_set.rep_count - 1, min_reps) if not set_next_to_min else min_reps
+            new_set.target = min_reps
             set_next_to_min = True
 
         # Able to have a set with more reps despite fatigue
@@ -35,10 +35,7 @@ def generate_sets_progression(sets: [Set], min_reps: int, max_reps: int) -> [Set
 
         next_sets.append(new_set)
 
-    if add_weight:
-        next_sets = []
-
-    return next_sets
+    return add_weight, next_sets
 
 
 def get_increased_weight(current_weight: float) -> float:
@@ -61,18 +58,21 @@ def get_increased_weight(current_weight: float) -> float:
 def generate_progression_for_exercise(exercise: Exercise) -> Exercise:
 
     exercise.sets.sort(lambda x: x.order)
-    new_sets = generate_sets_progression(exercise.sets, exercise.min_reps, exercise.max_reps)
+    add_weight, new_sets = generate_sets_progression(exercise.sets, exercise.min_reps, exercise.max_reps)
 
     new_exercise = exercise.timed_clone(exclude_attrs=['sets'])
     new_exercise.sets = new_sets
 
-    if not new_sets:
+    if add_weight:
         new_exercise.weight = get_increased_weight(exercise.weight)
 
     return new_exercise
 
+
 def generate_progression_for_exercise_list(exercise_list: [Exercise]) -> [Exercise]:
+
     next_exercises_for_workout = []
+
     for ex in exercise_list:
         next_ex = generate_progression_for_exercise(ex)
         next_exercises_for_workout.append(next_ex)
